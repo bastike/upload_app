@@ -1,5 +1,6 @@
-from flask import Flask, request, render_template_string, redirect
+from flask import Flask, request, render_template_string
 import os
+import subprocess
 from werkzeug.utils import secure_filename
 
 UPLOAD_FOLDER = 'uploads'
@@ -70,7 +71,17 @@ def upload_file():
         file = request.files.get('file')
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+
+            # Git commit and push
+            try:
+                subprocess.run(['git', 'add', filepath], check=True)
+                subprocess.run(['git', 'commit', '-m', f'Upload: {filename}'], check=True)
+                subprocess.run(['git', 'push', 'origin', 'main'], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Git error: {e}")
+
             return render_template_string(SUCCESS_PAGE, filename=filename)
         return '❌ Ungültige Datei'
     return render_template_string(HTML_FORM)
